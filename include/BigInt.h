@@ -16,6 +16,9 @@ namespace szsilence06
 
 		static const int MAX_BASE = 16;
 		static const Byte INVALID_VALUE = 255;
+		static const int ABS_GREATER = 1;
+		static const int ABS_LESS = -1;
+		static const int ABS_EQUAL = 0;
 
 	public:
 		BigIntBase()
@@ -29,15 +32,17 @@ namespace szsilence06
 			trim(temp);
 
 			_digits = temp.length();
-			_data.resize(ceil((float)_digits / BaseTrait<Base>::digitPerByte));
+			_data.resize(_getBytesCount(_digits));
 
-			int index = 0;
+			size_t index = 0;
 			if (temp[0] == '-')
 			{
 				_sign = -1;
 				index++;
 				_digits--;
 			}
+			else
+				_sign = 1;
 
 			int digit = _digits - 1;
 			for (; index < number.length(); index++)
@@ -51,6 +56,7 @@ namespace szsilence06
 				_setDigit(digit, value);
 				digit--;
 			}
+			_correct();
 		}
 
 		std::string toString() const
@@ -64,18 +70,21 @@ namespace szsilence06
 			{
 				ss << _getChar(_getDigit(i));
 			}
+			if (_sign == 0)
+				ss << 0;
 			return ss.str();
 		}
 
 		//operators
-		BigIntBase operator+ (const BigIntBase& rhs)
+		BigIntBase operator+ (const BigIntBase& rhs) const
 		{
 			int maxDigit = std::max(_digits, rhs._digits);
 			bool hasCarry = false;
 
 			BigIntBase result;
+			result._sign = 1;
 			result._digits = maxDigit + 1;
-			result._data.resize(ceil((float)result._digits / BaseTrait<Base>::digitPerByte));
+			result._data.resize(_getBytesCount(result._digits));
 			for (int i = 0; i < maxDigit; i++)
 			{
 				Byte a = i < _digits ? _getDigit(i) : 0;
@@ -107,19 +116,29 @@ namespace szsilence06
 			return result;
 		}
 
-		BigIntBase operator- (const BigIntBase& rhs)
+		BigIntBase operator- (const BigIntBase& rhs) const
 		{
+			if (rhs._sign == 0)
+				return *this;
+			if (_sign > rhs._sign)
+				return *this + (-rhs);
+			if (_sign < rhs._sign)
+				return -(-*this + rhs);
+			if (*this < rhs)
+				return -(rhs - *this);
+
 			int maxDigit = std::max(_digits, rhs._digits);
 			bool hasCarry = false;
 
 			BigIntBase result;
+			result._sign = 1;
 			result._digits = maxDigit;
-			result._data.resize(ceil((float)result._digits / BaseTrait<Base>::digitPerByte));
+			result._data.resize(_getBytesCount(result._digits));
 			for (int i = 0; i < maxDigit; i++)
 			{
-				Byte a = i < _digits ? _getDigit(i) : 0;
-				Byte b = i < rhs._digits ? rhs._getDigit(i) : 0;
-				Byte temp = a - b;
+				char a = i < _digits ? _getDigit(i) : 0;
+				char b = i < rhs._digits ? rhs._getDigit(i) : 0;
+				char temp = a - b;
 				if (hasCarry)
 					temp--;
 				if (temp < 0)
@@ -143,7 +162,25 @@ namespace szsilence06
 				if (result._data[result._data.size() - 1] == 0)
 					result._data.erase(result._data.end() - 1);
 			}
+			//remove zeros in hight bits
+			result._correct();
 			return result;
+		}
+
+		BigIntBase operator -() const
+		{
+			BigIntBase result = *this;
+			result._sign = -result._sign;
+			return result;
+		}
+
+		bool operator <(const BigIntBase& rhs) const
+		{
+			if (_sign != rhs._sign)
+				return _sign < rhs._sign;
+
+			bool abs_less = _absCompare(rhs) == ABS_LESS;
+			return _sign < 0 ? !abs_less : abs_less;
 		}
 
 	private:
@@ -167,7 +204,7 @@ namespace szsilence06
 			_data[index] |= valueToSet;
 		}
 
-		Byte _getValue(char c) const
+		Byte _getValue(char c)
 		{
 			if (_isNumber(c))
 				return c - '0';
@@ -183,7 +220,7 @@ namespace szsilence06
 			return INVALID_VALUE;
 		}
 
-		char _getChar(Byte value) const
+		static char _getChar(Byte value)
 		{
 			if (value < 10)
 			{
@@ -192,24 +229,64 @@ namespace szsilence06
 			return 'a' + value - 10;
 		}
 
-		bool _isNumber(char c) const
+		static bool _isNumber(char c)
 		{
 			return c >= '0' && c <= '9';
 		}
 
-		bool _isAlphabet(char c) const
+		static bool _isAlphabet(char c)
 		{
 			return _isUpperCase(c) || _isLowerCase(c);
 		}
 
-		bool _isUpperCase(char c) const
+		static bool _isUpperCase(char c)
 		{
 			return (c >= 'A' && c <= 'Z');
 		}
 
-		bool _isLowerCase(char c) const
+		static bool _isLowerCase(char c)
 		{
 			return (c >= 'a' && c <= 'z');
+		}
+
+		int _absCompare(const BigIntBase& rhs) const
+		{
+			if (_digits != rhs._digits)
+				return this->_digits > rhs._digits ? ABS_GREATER : ABS_LESS;
+
+			for (int i = 0; i < _digits; i++)
+			{
+				Byte a = _getDigit(i);
+				Byte b = rhs._getDigit(i);
+				if (a != b)
+					return a > b ? ABS_GREATER : ABS_LESS;
+			}
+			return ABS_EQUAL;
+		}
+
+		//Remove zeros in high bits
+		void _correct()
+		{
+			int count_zeros_highbit = 0;
+			for (int i = _digits - 1; i >= 0; i--)
+			{
+				if (_getDigit(i) != 0)
+					break;
+				count_zeros_highbit++;
+			}
+			_digits -= count_zeros_highbit;
+			int bytes = _getBytesCount(_digits);
+			for (int i = bytes; i < _data.size(); i++)
+			{
+				_data.erase(_data.begin() + i);
+			}
+			if (_digits == 0)
+				_sign = 0;
+		}
+
+		static size_t _getBytesCount(int digitCount)
+		{
+			return (size_t)(ceil((float)digitCount / BaseTrait<Base>::digitPerByte));
 		}
 
 	private:
