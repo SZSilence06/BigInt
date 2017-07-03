@@ -28,35 +28,24 @@ namespace szsilence06
 
 		BigIntBase(const std::string& number) : BigIntBase()
 		{
-			std::string temp = number;
-			trim(temp);
+			_init(number);
+		}
 
-			_digits = temp.length();
-			_data.resize(_getBytesCount(_digits));
+		BigIntBase(long long number) : BigIntBase()
+		{
+			_init(number);
+		}
 
-			size_t index = 0;
-			if (temp[0] == '-')
-			{
-				_sign = -1;
-				index++;
-				_digits--;
-			}
-			else
-				_sign = 1;
+		BigIntBase& operator=(long long number)
+		{
+			_init(number);
+			return *this;
+		}
 
-			int digit = _digits - 1;
-			for (; index < number.length(); index++)
-			{
-				Byte value = _getValue(number[index]);
-				if (value == INVALID_VALUE || value >= Base)
-				{
-					_isValid = false;
-					return;
-				}
-				_setDigit(digit, value);
-				digit--;
-			}
-			_correct();
+		BigIntBase& operator= (const std::string& number)
+		{
+			_init(number);
+			return *this;
 		}
 
 		std::string toString() const
@@ -66,7 +55,7 @@ namespace szsilence06
 			{
 				ss << '-';
 			}
-			for (int i = _digits - 1; i >= 0; i--)
+			for (int i = (int)(_digits - 1); i >= 0; i--)
 			{
 				ss << _getChar(_getDigit(i));
 			}
@@ -78,7 +67,12 @@ namespace szsilence06
 		//operators
 		BigIntBase operator+ (const BigIntBase& rhs) const
 		{
-			int maxDigit = std::max(_digits, rhs._digits);
+			if (*this < 0)
+				return rhs - (-*this);
+			if (rhs < 0)
+				return *this - (-rhs);
+
+			size_t maxDigit = std::max(_digits, rhs._digits);
 			bool hasCarry = false;
 
 			BigIntBase result;
@@ -124,10 +118,12 @@ namespace szsilence06
 				return *this + (-rhs);
 			if (_sign < rhs._sign)
 				return -(-*this + rhs);
+			if (_sign < 0)
+				return -rhs - (-*this);
 			if (*this < rhs)
 				return -(rhs - *this);
 
-			int maxDigit = std::max(_digits, rhs._digits);
+			size_t maxDigit = std::max(_digits, rhs._digits);
 			bool hasCarry = false;
 
 			BigIntBase result;
@@ -152,16 +148,6 @@ namespace szsilence06
 				}
 				result._setDigit(i, temp);
 			}
-			if (hasCarry)
-			{
-				result._setDigit(result._digits - 1, 1);
-			}
-			else
-			{
-				result._digits--;
-				if (result._data[result._data.size() - 1] == 0)
-					result._data.erase(result._data.end() - 1);
-			}
 			//remove zeros in hight bits
 			result._correct();
 			return result;
@@ -171,6 +157,35 @@ namespace szsilence06
 		{
 			BigIntBase result = *this;
 			result._sign = -result._sign;
+			return result;
+		}
+
+		BigIntBase operator *(const BigIntBase& rhs) const
+		{
+			BigIntBase result;
+			result._digits = _digits + rhs._digits;
+			result._sign = _sign * rhs._sign;
+			result._data.resize(_getBytesCount(result._digits));
+
+			Byte carry = 0;
+			for (size_t i = 0; i < _digits; i++)
+			{
+				for (size_t j = 0; j < rhs._digits; j++)
+				{
+					Byte product = _getDigit(i) * rhs._getDigit(j) + carry;
+					carry = product / Base;
+					product %= Base;
+					Byte temp = result._getDigit(i + j) + product;
+					carry += temp / Base;
+					temp %= Base;
+					result._setDigit(i + j, temp);
+				}
+				result._setDigit(i + rhs._digits, result._getDigit(i + rhs._digits) + carry);
+				carry = 0;
+			}
+			result._setDigit(result._digits - 1, result._getDigit(result._digits - 1) + carry);
+			carry = 0;
+			result._correct();
 			return result;
 		}
 
@@ -184,19 +199,91 @@ namespace szsilence06
 		}
 
 	private:
-		Byte _getDigit(int digit) const
+		void _init(const std::string& number)
 		{
-			int index = digit / BaseTrait<Base>::digitPerByte;
-			int posInByte = digit % BaseTrait<Base>::digitPerByte;
+			std::string temp = number;
+			trim(temp);
+
+			_digits = temp.length();
+			_data.resize(_getBytesCount(_digits));
+
+			size_t index = 0;
+			if (temp[0] == '-')
+			{
+				_sign = -1;
+				index++;
+				_digits--;
+			}
+			else
+				_sign = 1;
+
+			int digit = (int)(_digits - 1);
+			for (; index < number.length(); index++)
+			{
+				Byte value = _getValue(number[index]);
+				if (value == INVALID_VALUE || value >= Base)
+				{
+					_isValid = false;
+					return;
+				}
+				_setDigit(digit, value);
+				digit--;
+			}
+			_correct();
+		}
+
+		void _init(long long number)
+		{
+			if (number > 0)
+				_sign = 1;
+			else if (number == 0)
+				_sign = 0;
+			else
+			{
+				_sign = -1;
+				number = -number;
+			}
+
+			_digits = 0;
+			if (number == 0)
+			{
+				_digits = 1;
+				_data.resize(1);
+				_setDigit(0, 0);
+				return;
+			}
+
+			long long another = number;
+			while (another)
+			{
+				another /= Base;
+				_digits++;
+			}
+
+			_data.resize(_getBytesCount(_digits));
+			another = number;
+			int i = 0;
+			while (another)
+			{
+				_setDigit(i, another % Base);
+				another /= Base;
+				i++;
+			}
+		}
+
+		Byte _getDigit(size_t digit) const
+		{
+			size_t index = digit / BaseTrait<Base>::digitPerByte;
+			size_t posInByte = digit % BaseTrait<Base>::digitPerByte;
 			Byte c = _data[index];
 			c >>= (posInByte * BaseTrait<Base>::bitPerDigit);
 			c &= BaseTrait<Base>::mask;
 			return c;
 		}
 
-		void _setDigit(int digit, Byte value)
+		void _setDigit(size_t digit, Byte value)
 		{
-			int index = digit / BaseTrait<Base>::digitPerByte;
+			size_t index = digit / BaseTrait<Base>::digitPerByte;
 			int posInByte = digit % BaseTrait<Base>::digitPerByte;
 			Byte valueToSet = value << (posInByte * BaseTrait<Base>::bitPerDigit);
 			Byte clearMask = ~(BaseTrait<Base>::mask << (posInByte * BaseTrait<Base>::bitPerDigit));
@@ -268,15 +355,15 @@ namespace szsilence06
 		void _correct()
 		{
 			int count_zeros_highbit = 0;
-			for (int i = _digits - 1; i >= 0; i--)
+			for (int i = (int)(_digits - 1); i >= 0; i--)
 			{
 				if (_getDigit(i) != 0)
 					break;
 				count_zeros_highbit++;
 			}
 			_digits -= count_zeros_highbit;
-			int bytes = _getBytesCount(_digits);
-			for (int i = bytes; i < _data.size(); i++)
+			size_t bytes = _getBytesCount(_digits);
+			for (size_t i = bytes; i < _data.size(); i++)
 			{
 				_data.erase(_data.begin() + i);
 			}
@@ -284,14 +371,14 @@ namespace szsilence06
 				_sign = 0;
 		}
 
-		static size_t _getBytesCount(int digitCount)
+		static size_t _getBytesCount(size_t digitCount)
 		{
 			return (size_t)(ceil((float)digitCount / BaseTrait<Base>::digitPerByte));
 		}
 
 	private:
 		std::vector<Byte> _data;
-		int _digits = 0;
+		size_t _digits = 0;
 		char _sign = 0;
 		bool _isValid = true;
 	};
