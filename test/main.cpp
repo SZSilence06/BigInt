@@ -13,6 +13,13 @@ TEST_CASE("add and sub", "[add and sub]")
 
 	SECTION("Simple case")
 	{
+		a = 0;
+		REQUIRE(a.toString() == "0");
+
+		a = 12;
+		b = 10;
+		REQUIRE((a - b).toString() == "2");
+
 		a = "21390909023810543675868575343";
 		b = "3914289857865008977206457942289";
 		REQUIRE((a + b).toString() == "3935680766888819520882326517632");
@@ -61,8 +68,44 @@ TEST_CASE("mul", "[multiply]")
 		b = -107976;
 		REQUIRE((a*b).toString() == "-13927967282155095073078543110583776");
 
+		a = 172;
+		b = 14;
+		REQUIRE((a*b).toString() == "2408");
+
 		a = 0;
 		b = -12;
 		REQUIRE((a*b).toString() == "0");
+	}
+}
+
+TEST_CASE("div", "[divide]")
+{
+	BigInt a, b;
+
+	SECTION("Simple case")
+	{
+		a = 10;
+		b = 15;
+		REQUIRE((a / b).toString() == "0");
+
+		a = "128";
+		b = -10;
+		REQUIRE((a / b).toString() == "-12");
+
+		a = 0;
+		b = -12;
+		REQUIRE((a / b).toString() == "0");
+
+		a = 528;
+		b = 22;
+		REQUIRE((a / b).toString() == "24");
+
+		a = "21374877698635581831263128830768679898";
+		b = 32728749094207;
+		REQUIRE((a / b).toString() == "653091801251241301975441");
+
+		a = 2225;
+		b = -22222;
+		REQUIRE((a / b).toString() == "0");
 	}
 }

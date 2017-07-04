@@ -59,8 +59,6 @@ namespace szsilence06
 			{
 				ss << _getChar(_getDigit(i));
 			}
-			if (_sign == 0)
-				ss << 0;
 			return ss.str();
 		}
 
@@ -108,6 +106,12 @@ namespace szsilence06
 					result._data.erase(result._data.end() - 1);
 			}
 			return result;
+		}
+
+		BigIntBase& operator +=(const BigIntBase& rhs)
+		{
+			*this = *this + rhs;
+			return *this;
 		}
 
 		BigIntBase operator- (const BigIntBase& rhs) const
@@ -160,6 +164,12 @@ namespace szsilence06
 			return result;
 		}
 
+		BigIntBase& operator -=(const BigIntBase& rhs)
+		{
+			*this = *this - rhs;
+			return *this;
+		}
+
 		BigIntBase operator *(const BigIntBase& rhs) const
 		{
 			BigIntBase result;
@@ -189,6 +199,78 @@ namespace szsilence06
 			return result;
 		}
 
+		BigIntBase& operator *=(const BigIntBase& rhs)
+		{
+			*this = *this * rhs;
+			return *this;
+		}
+
+		BigIntBase operator /(const BigIntBase& rhs) const
+		{
+			if (rhs._sign == 0)
+				throw std::runtime_error("divide by zero");
+
+			BigIntBase result;
+			if (_absCompare(rhs) == ABS_LESS)
+				return result = 0;
+
+			result._sign = _sign * rhs._sign;
+
+			//±»³ýÊý
+			BigInt a;
+			a._sign = 1;
+			a._digits = rhs._digits;
+			a._data.resize(_getBytesCount(rhs._digits));
+			for (size_t i = 0; i < rhs._digits; i++)
+				a._setDigit(a._digits - i - 1, _getDigit(_digits - i - 1));
+
+			BigInt div = rhs;
+			div._sign = 1;
+
+			std::vector<Byte> divResult;
+			for (size_t i = rhs._digits;; i++)
+			{
+				if (a < div)
+				{
+					divResult.push_back(0);
+				}
+				else
+				{
+					Byte count = 0;
+					while (a >= div)
+					{
+						a -= div;
+						count++;
+					}
+					divResult.push_back(count);
+				}
+				if (i < _digits)
+				{
+					a *= Base;
+					a += _getDigit(_digits - i - 1);
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			result._digits = divResult.size();
+			result._data.resize(_getBytesCount(result._digits));
+			for (size_t i = 0; i < divResult.size(); i++)
+			{
+				result._setDigit(result._digits - i - 1, divResult[i]);
+			}
+			result._correct();
+			return result;
+		}
+
+		BigIntBase& operator /=(const BigIntBase& rhs)
+		{
+			*this = *this / rhs;
+			return *this;
+		}
+
 		bool operator <(const BigIntBase& rhs) const
 		{
 			if (_sign != rhs._sign)
@@ -196,6 +278,25 @@ namespace szsilence06
 
 			bool abs_less = _absCompare(rhs) == ABS_LESS;
 			return _sign < 0 ? !abs_less : abs_less;
+		}
+
+		bool operator >(const BigIntBase& rhs) const
+		{
+			if (_sign != rhs._sign)
+				return _sign > rhs._sign;
+
+			bool abs_greater = _absCompare(rhs) == ABS_GREATER;
+			return _sign < 0 ? !abs_greater : abs_greater;
+		}
+
+		bool operator <=(const BigIntBase& rhs) const
+		{
+			return !(*this > rhs);
+		}
+
+		bool operator >=(const BigIntBase& rhs) const
+		{
+			return !(*this < rhs);
 		}
 
 	private:
@@ -341,7 +442,7 @@ namespace szsilence06
 			if (_digits != rhs._digits)
 				return this->_digits > rhs._digits ? ABS_GREATER : ABS_LESS;
 
-			for (int i = 0; i < _digits; i++)
+			for (int i = (int)(_digits - 1); i >= 0; i--)
 			{
 				Byte a = _getDigit(i);
 				Byte b = rhs._getDigit(i);
@@ -362,13 +463,16 @@ namespace szsilence06
 				count_zeros_highbit++;
 			}
 			_digits -= count_zeros_highbit;
+			if (_digits == 0)
+			{
+				_sign = 0;
+				_digits = 1;
+			}
 			size_t bytes = _getBytesCount(_digits);
 			for (size_t i = bytes; i < _data.size(); i++)
 			{
 				_data.erase(_data.begin() + i);
 			}
-			if (_digits == 0)
-				_sign = 0;
 		}
 
 		static size_t _getBytesCount(size_t digitCount)
