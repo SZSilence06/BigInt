@@ -50,6 +50,9 @@ namespace szsilence06
 
 		std::string toString() const
 		{
+			if (_isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
 			std::stringstream ss;
 			if (_sign < 0)
 			{
@@ -65,6 +68,9 @@ namespace szsilence06
 		//operators
 		BigIntBase operator+ (const BigIntBase& rhs) const
 		{
+			if (_isValid == false || rhs._isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
 			if (*this < 0)
 				return rhs - (-*this);
 			if (rhs < 0)
@@ -102,7 +108,7 @@ namespace szsilence06
 			else
 			{
 				result._digits--;
-				if (result._data[result._data.size() - 1] == 0)
+				if (result._data[result._data.size() - 1] == 0 && result._digits > 1)
 					result._data.erase(result._data.end() - 1);
 			}
 			return result;
@@ -116,6 +122,9 @@ namespace szsilence06
 
 		BigIntBase operator- (const BigIntBase& rhs) const
 		{
+			if (_isValid == false || rhs._isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
 			if (rhs._sign == 0)
 				return *this;
 			if (_sign > rhs._sign)
@@ -159,6 +168,9 @@ namespace szsilence06
 
 		BigIntBase operator -() const
 		{
+			if (_isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
 			BigIntBase result = *this;
 			result._sign = -result._sign;
 			return result;
@@ -172,6 +184,9 @@ namespace szsilence06
 
 		BigIntBase operator *(const BigIntBase& rhs) const
 		{
+			if (_isValid == false || rhs._isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
 			BigIntBase result;
 			result._digits = _digits + rhs._digits;
 			result._sign = _sign * rhs._sign;
@@ -207,61 +222,21 @@ namespace szsilence06
 
 		BigIntBase operator /(const BigIntBase& rhs) const
 		{
+			if (_isValid == false || rhs._isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
 			if (rhs._sign == 0)
 				throw std::runtime_error("divide by zero");
-
-			BigIntBase result;
-			if (_absCompare(rhs) == ABS_LESS)
-				return result = 0;
-
-			result._sign = _sign * rhs._sign;
-
-			//±»³ýÊý
-			BigInt a;
-			a._sign = 1;
-			a._digits = rhs._digits;
-			a._data.resize(_getBytesCount(rhs._digits));
-			for (size_t i = 0; i < rhs._digits; i++)
-				a._setDigit(a._digits - i - 1, _getDigit(_digits - i - 1));
 
 			BigInt div = rhs;
 			div._sign = 1;
 
-			std::vector<Byte> divResult;
-			for (size_t i = rhs._digits;; i++)
-			{
-				if (a < div)
-				{
-					divResult.push_back(0);
-				}
-				else
-				{
-					Byte count = 0;
-					while (a >= div)
-					{
-						a -= div;
-						count++;
-					}
-					divResult.push_back(count);
-				}
-				if (i < _digits)
-				{
-					a *= Base;
-					a += _getDigit(_digits - i - 1);
-				}
-				else
-				{
-					break;
-				}
-			}
+			BigIntBase remainder;
+			BigIntBase result = _divide(div, remainder);
 
-			result._digits = divResult.size();
-			result._data.resize(_getBytesCount(result._digits));
-			for (size_t i = 0; i < divResult.size(); i++)
-			{
-				result._setDigit(result._digits - i - 1, divResult[i]);
-			}
+			result._sign = _sign * rhs._sign;
 			result._correct();
+
 			return result;
 		}
 
@@ -271,8 +246,37 @@ namespace szsilence06
 			return *this;
 		}
 
+		BigIntBase operator %(const BigIntBase& rhs) const
+		{
+			if (_isValid == false || rhs._isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
+			if (rhs._sign == 0)
+				throw std::runtime_error("divide by zero");
+
+			BigInt div = rhs;
+			div._sign = 1;
+
+			BigIntBase remainder;
+			_divide(div, remainder);
+
+			remainder._sign = _sign;
+			remainder._correct();
+
+			return remainder;
+		}
+
+		BigIntBase& operator %=(const BigIntBase& rhs)
+		{
+			*this = *this % rhs;
+			return *this;
+		}
+
 		bool operator <(const BigIntBase& rhs) const
 		{
+			if (_isValid == false || rhs._isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
 			if (_sign != rhs._sign)
 				return _sign < rhs._sign;
 
@@ -282,6 +286,9 @@ namespace szsilence06
 
 		bool operator >(const BigIntBase& rhs) const
 		{
+			if (_isValid == false || rhs._isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
 			if (_sign != rhs._sign)
 				return _sign > rhs._sign;
 
@@ -297,6 +304,65 @@ namespace szsilence06
 		bool operator >=(const BigIntBase& rhs) const
 		{
 			return !(*this < rhs);
+		}
+
+		bool operator ==(const BigIntBase& rhs) const
+		{
+			if (_isValid == false || rhs._isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
+			if (_sign != rhs._sign)
+				return false;
+
+			if (_digits != rhs._digits)
+				return false;
+
+			for (size_t i = 0; i < _digits; i++)
+			{
+				if (_getDigit(i) != rhs._getDigit(i))
+					return false;
+			}
+			return true;
+		}
+
+		bool operator !=(const BigIntBase& rhs) const
+		{
+			return !(*this == rhs);
+		}
+
+		int64_t toInt64() const
+		{
+#ifdef _MSC_VER
+#pragma message("Warning : conversion from BigInt to integers. possible loss of data.")
+#else
+			#warning conversion from BigInt to integers.possible loss of data.;
+#endif
+			if (_isValid == false)
+				throw std::runtime_error("Doing operation to invalid BigInt values.");
+
+			int64_t result = 0;
+			for (int i = (int)(_digits - 1); i >= 0; i--)
+			{
+				result *= Base;
+				result += _getDigit(i);
+			}
+			result *= _sign;
+			return result;
+		}
+
+		int32_t toInt32() const
+		{
+			return (int32_t)toInt64();
+		}
+
+		int16_t toInt16() const
+		{
+			return (int16_t)toInt16();
+		}
+
+		bool isValid() const
+		{
+			return _isValid;
 		}
 
 	private:
@@ -478,6 +544,45 @@ namespace szsilence06
 		static size_t _getBytesCount(size_t digitCount)
 		{
 			return (size_t)(ceil((float)digitCount / BaseTrait<Base>::digitPerByte));
+		}
+
+		BigIntBase _divide(const BigIntBase& div, BigIntBase& remainder) const
+		{
+			remainder._sign = 1;
+			remainder._digits = div._digits;
+			remainder._data.resize(_getBytesCount(div._digits));
+
+			std::vector<Byte> divResult;
+			for (size_t i = 0; i < _digits; i++)
+			{
+				remainder *= Base;
+				remainder += _getDigit(_digits - i - 1);
+				if (remainder < div)
+				{
+					divResult.push_back(0);
+				}
+				else
+				{
+					Byte count = 0;
+					while (remainder >= div)
+					{
+						remainder -= div;
+						count++;
+					}
+					divResult.push_back(count);
+				}
+			}
+
+			BigIntBase result;
+			result._digits = divResult.size();
+			result._data.resize(_getBytesCount(result._digits));
+			for (size_t i = 0; i < divResult.size(); i++)
+			{
+				result._setDigit(result._digits - i - 1, divResult[i]);
+			}
+			result._correct();
+			remainder._correct();
+			return result;
 		}
 
 	private:

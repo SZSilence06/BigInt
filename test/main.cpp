@@ -108,4 +108,90 @@ TEST_CASE("div", "[divide]")
 		b = -22222;
 		REQUIRE((a / b).toString() == "0");
 	}
+
+	SECTION("remainder")
+	{
+		a = 10;
+		b = 15;
+		REQUIRE((a % b).toString() == "10");
+
+		a = "128";
+		b = -10;
+		REQUIRE((a % b).toString() == "8");
+
+		a = 0;
+		b = -12;
+		REQUIRE((a % b).toString() == "0");
+
+		a = 528;
+		b = 22;
+		REQUIRE((a % b).toString() == "0");
+
+		a = "21374877698635581831263128830768679898";
+		b = 32728749094207;
+		REQUIRE((a % b).toString() == "26842259309611");
+
+		a = 2225;
+		b = -22222;
+		REQUIRE((a % b).toString() == "2225");
+	}
+}
+
+TEST_CASE("comparison")
+{
+	BigInt a, b;
+
+	SECTION("equal(==) and no-equal(!=)")
+	{
+		a = 160;
+		b = "000160";
+		REQUIRE(a == b);
+
+		a = "0";
+		b = "-0";
+		REQUIRE(a == b);
+
+		a = "016000";
+		b = "017000";
+		REQUIRE(a != b);
+	}
+
+	SECTION("greater(>) and less(<)")
+	{
+		a = 160;
+		b = "000120";
+		REQUIRE(a > b);
+
+		a = "0";
+		b = "-0";
+		REQUIRE(((a > b) == false && (a < b) == false));
+
+		a = "016000";
+		b = "-017000";
+		REQUIRE(b < a);
+
+		a = "-12598";
+		REQUIRE(a < 0);
+	}
+}
+
+TEST_CASE("conversion to integers")
+{
+	BigInt a, b;
+
+	a = "-0000";
+	REQUIRE(a.toInt32() == 0);
+
+	a = -6728;
+	REQUIRE(a.toInt32() == -6728);
+
+	a = 5529;
+	b = -5529;
+	REQUIRE((a + b).toInt32() == 0);
+}
+
+TEST_CASE("error handling")
+{
+	BigInt a = "0x123445";
+	REQUIRE(a.isValid() == false);
 }
