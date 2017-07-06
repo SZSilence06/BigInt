@@ -6,7 +6,7 @@ Still under development. not completed yet.
 ## Usage
 
 This is a header-only library. To use this package:
-```
+```C++
 #include <BigInt.h>
 
 using namespace szsilence06;
@@ -16,7 +16,7 @@ using namespace szsilence06;
 
 ### Construct from integers or strings
 
-```
+```C++
 BigInt a = -126;
 a.toString();    //"-126"
 BigInt b = "00002594";
@@ -27,7 +27,7 @@ c.isValid();    //"false"
 
 ### operands
 
-```
+```C++
 BigInt a = 120;
 BigInt b = 25;
 a + b;   //145
@@ -40,7 +40,7 @@ a > b;   //true
 
 ### Conversion to integers
 
-```
+```C++
 BigInt a = "-00273";
 a.toInt32();   //-273
 ```
