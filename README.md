@@ -23,6 +23,10 @@ BigInt b = "00002594";
 b.toString();    //"2594"
 BigInt c = "0123abcd";
 c.isValid();    //"false"
+BigInt16 hex = 256;
+hex.toString();  //"100"
+BigInt16 hex2 = "-0007cd";
+hex2.toString();   //"-7CD"
 ```
 
 ### operands
@@ -43,6 +47,21 @@ a > b;   //true
 ```C++
 BigInt a = "-00273";
 a.toInt32();   //-273
+```
+
+### Conversion to other bases
+
+```C++
+BigInt a = 1288343654;
+
+BigInt16 hex = a.toBase<16>();
+hex.toString();  //"4CCA9066"
+
+BigInt2 binary = a.toBase<2>();
+binary.toString();  //"1001100110010101001000001100110"
+
+BigInt8 oct = a.toBase<8>();
+oct.toString(); //"11462510146"
 ```
 
 ## Acknowledgement

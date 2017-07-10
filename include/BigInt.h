@@ -228,7 +228,7 @@ namespace szsilence06
 			if (rhs._sign == 0)
 				throw std::runtime_error("divide by zero");
 
-			BigInt div = rhs;
+			BigIntBase div = rhs;
 			div._sign = 1;
 
 			BigIntBase remainder;
@@ -254,7 +254,7 @@ namespace szsilence06
 			if (rhs._sign == 0)
 				throw std::runtime_error("divide by zero");
 
-			BigInt div = rhs;
+			BigIntBase div = rhs;
 			div._sign = 1;
 
 			BigIntBase remainder;
@@ -332,11 +332,6 @@ namespace szsilence06
 
 		int64_t toInt64() const
 		{
-#ifdef _MSC_VER
-#pragma message("Warning : conversion from BigInt to integers. possible loss of data.")
-#else
-			#warning conversion from BigInt to integers.possible loss of data.;
-#endif
 			if (_isValid == false)
 				throw std::runtime_error("Doing operation to invalid BigInt values.");
 
@@ -357,12 +352,44 @@ namespace szsilence06
 
 		int16_t toInt16() const
 		{
-			return (int16_t)toInt16();
+			return (int16_t)toInt64();
+		}
+
+		int8_t toInt8() const
+		{
+			return (int8_t)toInt64();
 		}
 
 		bool isValid() const
 		{
 			return _isValid;
+		}
+
+		template<int AnotherBase>
+		BigIntBase<AnotherBase> toBase() const
+		{
+			static_assert(AnotherBase >= 2 && AnotherBase <= 16, "Not supported Base.");
+			BigIntBase div = AnotherBase;
+
+			BigIntBase<AnotherBase> result;
+			result._sign = _sign;
+			result._digits = 0;
+
+			std::vector<BigIntBase> remainders;
+			BigIntBase another = *this;
+			while (another != 0)
+			{
+				remainders.push_back(another % div);
+				another /= div;
+				result._digits++;
+			}
+
+			result._data.resize(_getBytesCount(result._digits));
+			for (size_t i = 0; i < remainders.size(); i++)
+			{
+				result._setDigit(i, remainders[i].toInt8());
+			}
+			return result;
 		}
 
 	private:
@@ -464,11 +491,11 @@ namespace szsilence06
 				return c - '0';
 
 			if (_isLowerCase(c))
-				return c - 'a';
+				return c - 'a' + 10;
 
 			if (_isUpperCase(c))
 			{
-				return c - 'A';
+				return c - 'A' + 10;
 			}
 
 			return INVALID_VALUE;
@@ -480,7 +507,7 @@ namespace szsilence06
 			{
 				return '0' + value;
 			}
-			return 'a' + value - 10;
+			return 'A' + value - 10;
 		}
 
 		static bool _isNumber(char c)
@@ -590,9 +617,38 @@ namespace szsilence06
 		size_t _digits = 0;
 		char _sign = 0;
 		bool _isValid = true;
+
+		friend class BigIntBase<2>;
+		friend class BigIntBase<3>;
+		friend class BigIntBase<4>;
+		friend class BigIntBase<5>;
+		friend class BigIntBase<6>;
+		friend class BigIntBase<7>;
+		friend class BigIntBase<8>;
+		friend class BigIntBase<9>;
+		friend class BigIntBase<10>;
+		friend class BigIntBase<11>;
+		friend class BigIntBase<12>;
+		friend class BigIntBase<13>;
+		friend class BigIntBase<14>;
+		friend class BigIntBase<15>;
+		friend class BigIntBase<16>;
 	};
 
 	using BigInt = BigIntBase<10>;
+	using BigInt2 = BigIntBase<2>;
+	using BigInt3 = BigIntBase<3>;
+	using BigInt4 = BigIntBase<4>;
+	using BigInt5 = BigIntBase<5>;
+	using BigInt6 = BigIntBase<6>;
+	using BigInt7 = BigIntBase<7>;
+	using BigInt8 = BigIntBase<8>;
+	using BigInt9 = BigIntBase<9>;
+	using BigInt11 = BigIntBase<11>;
+	using BigInt12 = BigIntBase<12>;
+	using BigInt13 = BigIntBase<13>;
+	using BigInt14 = BigIntBase<14>;
+	using BigInt15 = BigIntBase<15>;
 	using BigInt16 = BigIntBase<16>;
 }
 

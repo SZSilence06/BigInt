@@ -195,3 +195,16 @@ TEST_CASE("error handling")
 	BigInt a = "0x123445";
 	REQUIRE(a.isValid() == false);
 }
+
+TEST_CASE("converting to ohter bases")
+{
+	BigInt a = 1288343654;
+	BigInt16 hex = a.toBase<16>();
+	REQUIRE(hex.toString() == "4CCA9066");
+
+	BigInt2 binary = a.toBase<2>();
+	REQUIRE(binary.toString() == "1001100110010101001000001100110");
+
+	BigInt8 oct = a.toBase<8>();
+	REQUIRE(oct.toString() == "11462510146");
+}
