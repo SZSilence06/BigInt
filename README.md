@@ -64,6 +64,19 @@ BigInt8 oct = a.toBase<8>();
 oct.toString(); //"11462510146"
 ```
 
+## ToDo
+
+- [x] 10-base BigInt
+- [x] Other bases BigInt
+- [x] Operands for BigInt
+- [x] Conversion between bases for BigInt
+- [ ] 10-base BigReal
+- [ ] Other bases BigReal
+- [ ] Operands for BigReal
+- [ ] Conversion between bases for BigReal
+- [ ] Conversion between BigInt and BigReal
+
+
 ## Acknowledgement
 
 This project uses these 3rd party libraries.
